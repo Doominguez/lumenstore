@@ -14,8 +14,8 @@ export class WishlistService extends ApiService {
     return this.post<WishlistResponseDTO>(`/customers/${customerId}/wishlists`, wishlist);
   }
 
-  getWishlistById(customerId: number, wishlistId: number): Observable<Wishlist> {
-    return this.get<Wishlist>(`/customers/${customerId}/wishlists/${wishlistId}`);
+  getWishlistById(customerId: number, wishlistId: number): Observable<WishlistResponseDTO> {
+    return this.get<WishlistResponseDTO>(`/customers/${customerId}/wishlists/${wishlistId}`);
   }
 
   getWishlistsByCustomer(customerId: number): Observable<WishlistResponseDTO[]> {
@@ -62,8 +62,8 @@ export class WishlistService extends ApiService {
     return this.get<WishlistItem[]>(`/customers/${customerId}/wishlists/${wishlistId}/items`);
   }
 
-  getDefaultWishlist(customerId: number): Observable<Wishlist> {
-    return this.get<Wishlist>(`/customers/${customerId}/wishlists/default`);
+  getDefaultWishlist(customerId: number): Observable<WishlistResponseDTO> {
+    return this.get<WishlistResponseDTO>(`/customers/${customerId}/wishlists/default`);
   }
 
   isProductInWishlist(

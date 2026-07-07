@@ -313,6 +313,7 @@ export interface Wishlist {
   clienteId: number;
   name: string;
   isDefault: boolean;
+  itemCount?: number;
   createdAt: string;
   items?: WishlistItem[];
 }
@@ -334,6 +335,13 @@ export interface WishlistItem {
   id: number;
   wishlistId: number;
   productId: number;
+  product?: {
+    id: number;
+    name: string;
+    slug: string;
+    basePrice: number;
+    images?: string[];
+  };
   addedAt: string;
 }
 

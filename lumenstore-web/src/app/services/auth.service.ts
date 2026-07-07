@@ -1,79 +1,60 @@
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable, BehaviorSubject } from 'rxjs';
 import { tap } from 'rxjs/operators';
-import { ApiService, API_URL } from './api.service';
-import { LoginRequest, RegisterRequest, AuthResponse, Usuario } from '../models';
+import { ApiService } from './api.service';
+import { LoginRequest, RegisterRequest, AuthResponse } from '../models';
 
 @Injectable({
   providedIn: 'root',
 })
 export class AuthService extends ApiService {
-  private currentUserSubject: BehaviorSubject<AuthResponse | null>;
-  public currentUser$: Observable<AuthResponse | null>;
+  private currentUserSubject = new BehaviorSubject<AuthResponse | null>(null);
+  readonly currentUser$ = this.currentUserSubject.asObservable();
 
-  private tokenSubject: BehaviorSubject<string | null>;
-  public token$: Observable<string | null>;
+  private tokenSubject = new BehaviorSubject<string | null>(null);
+  readonly token$ = this.tokenSubject.asObservable();
 
   constructor(http: HttpClient) {
     super(http);
-    const storedUser = localStorage.getItem('currentUser');
-    const storedToken = localStorage.getItem('token');
+    this.loadFromStorage();
+  }
 
-    this.currentUserSubject = new BehaviorSubject<AuthResponse | null>(
-      storedUser ? JSON.parse(storedUser) : null,
-    );
-    this.currentUser$ = this.currentUserSubject.asObservable();
+  private loadFromStorage(): void {
+    try {
+      const storedUser = localStorage.getItem('currentUser');
+      const storedToken = localStorage.getItem('token');
 
-    this.tokenSubject = new BehaviorSubject<string | null>(storedToken);
-    this.token$ = this.tokenSubject.asObservable();
+      if (storedUser && storedToken) {
+        const user = JSON.parse(storedUser) as AuthResponse;
+        this.currentUserSubject.next(user);
+        this.tokenSubject.next(storedToken);
+      }
+    } catch {
+      this.clearSession();
+    }
   }
 
   login(credentials: LoginRequest): Observable<AuthResponse> {
     return this.post<AuthResponse>('/auth/login', credentials).pipe(
-      tap((response) => {
-        if (response && response.token) {
-          localStorage.setItem('token', response.token);
-          localStorage.setItem('currentUser', JSON.stringify(response));
-          this.tokenSubject.next(response.token);
-          this.currentUserSubject.next(response);
-        }
-      }),
+      tap((response) => this.handleAuthResponse(response)),
     );
   }
 
   register(request: RegisterRequest): Observable<AuthResponse> {
     return this.post<AuthResponse>('/auth/register', request).pipe(
-      tap((response) => {
-        if (response && response.token) {
-          localStorage.setItem('token', response.token);
-          localStorage.setItem('currentUser', JSON.stringify(response));
-          this.tokenSubject.next(response.token);
-          this.currentUserSubject.next(response);
-        }
-      }),
+      tap((response) => this.handleAuthResponse(response)),
     );
   }
 
   logout(): void {
-    // Clear local state immediately
     const token = this.getToken();
-    localStorage.removeItem('token');
-    localStorage.removeItem('currentUser');
-    this.tokenSubject.next(null);
-    this.currentUserSubject.next(null);
+    this.clearSession();
 
-    // Notify server to clear session (best-effort, do not block)
-    try {
-      this.post('/auth/logout', {}).subscribe({ next: () => {}, error: () => {} });
-    } catch (e) {
-      // ignore
+    // Notify server (best-effort, do not block)
+    if (token) {
+      this.post('/auth/logout', {}).subscribe({ error: () => {} });
     }
-  }
-
-  // Returns observable to allow waiting for server to confirm logout if needed
-  logoutServer(): Observable<any> {
-    return this.post('/auth/logout', {});
   }
 
   getToken(): string | null {
@@ -90,18 +71,27 @@ export class AuthService extends ApiService {
 
   refreshToken(refreshToken: string): Observable<AuthResponse> {
     return this.post<AuthResponse>('/auth/refresh', { refreshToken }).pipe(
-      tap((response) => {
-        if (response && response.token) {
-          localStorage.setItem('token', response.token);
-          localStorage.setItem('currentUser', JSON.stringify(response));
-          this.tokenSubject.next(response.token);
-          this.currentUserSubject.next(response);
-        }
-      }),
+      tap((response) => this.handleAuthResponse(response)),
     );
   }
 
   getLoginHistory(): Observable<any[]> {
     return this.get<any[]>('/auth/login-history');
+  }
+
+  private handleAuthResponse(response: AuthResponse): void {
+    if (response?.token) {
+      localStorage.setItem('token', response.token);
+      localStorage.setItem('currentUser', JSON.stringify(response));
+      this.tokenSubject.next(response.token);
+      this.currentUserSubject.next(response);
+    }
+  }
+
+  private clearSession(): void {
+    localStorage.removeItem('token');
+    localStorage.removeItem('currentUser');
+    this.tokenSubject.next(null);
+    this.currentUserSubject.next(null);
   }
 }

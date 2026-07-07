@@ -1,16 +1,78 @@
-<div class="wishlists-container">
-  <h1>My Wishlists</h1>
-
-  <div *ngIf="loading" class="loading">Loading...</div>
-
-  <div *ngIf="!loading && wishlists.length === 0" class="empty">
-    <p>No wishlists yet. Create one to save your favorite products!</p>
+<div class="wishlists-page">
+  <div class="page-header">
+    <h1>
+      <ng-container *ngIf="!selectedWishlist">Mis Favoritos</ng-container>
+      <ng-container *ngIf="selectedWishlist">{{ selectedWishlist.name }}</ng-container>
+    </h1>
+    <button *ngIf="selectedWishlist" class="btn btn-outline" (click)="goBack()">
+      ← Volver a listas
+    </button>
   </div>
 
-  <div *ngIf="!loading && wishlists.length > 0" class="wishlists">
-    <div *ngFor="let wishlist of wishlists" class="wishlist-card">
-      <h3>{{ wishlist.name }}</h3>
-      <p>{{ wishlist.items?.length || 0 }} items</p>
+  <div *ngIf="error" class="alert alert-warning">{{ error }}</div>
+
+  <!-- Loading -->
+  <div *ngIf="loading" class="loading">Cargando...</div>
+
+  <!-- Lista de wishlists (vista general) -->
+  <ng-container *ngIf="!loading && !selectedWishlist">
+    <div *ngIf="wishlists.length === 0" class="empty">
+      <div class="empty-icon">❤️</div>
+      <h3>No tienes listas de favoritos</h3>
+      <p>Agrega productos a tus favoritos desde la tienda</p>
+      <a routerLink="/store" class="btn btn-primary">Ir a la tienda</a>
     </div>
-  </div>
+
+    <div *ngIf="wishlists.length > 0" class="wishlists-grid">
+      <div
+        *ngFor="let wishlist of wishlists"
+        class="wishlist-card"
+        (click)="selectWishlist(wishlist)"
+      >
+        <div class="card-body">
+          <h3>{{ wishlist.name }}</h3>
+          <p class="item-count">{{ wishlist.itemCount ?? 0 }} productos</p>
+        </div>
+        <button
+          class="btn-delete"
+          (click)="deleteWishlist(wishlist.id); $event.stopPropagation()"
+          title="Eliminar lista"
+        >
+          ×
+        </button>
+      </div>
+    </div>
+  </ng-container>
+
+  <!-- Productos de una wishlist (vista detalle) -->
+  <ng-container *ngIf="!loading && selectedWishlist">
+    <div *ngIf="items.length === 0" class="empty">
+      <div class="empty-icon">📭</div>
+      <h3>Esta lista está vacía</h3>
+      <p>Agrega productos desde la tienda</p>
+      <a routerLink="/store" class="btn btn-primary">Ir a la tienda</a>
+    </div>
+
+    <div *ngIf="items.length > 0" class="items-list">
+      <div *ngFor="let item of items" class="item-card">
+        <div class="item-image">
+          <img
+            [src]="item.product?.images?.[0] || '/assets/placeholder.png'"
+            [alt]="item.product?.name"
+            loading="lazy"
+          />
+        </div>
+        <div class="item-info">
+          <h4>
+            <a [routerLink]="['/store', item.product?.slug]">{{ item.product?.name }}</a>
+          </h4>
+          <p class="item-price" *ngIf="getItemPrice(item) > 0">
+            S/. {{ getItemPrice(item).toFixed(2) }}
+          </p>
+          <p class="item-added">Agregado: {{ item.addedAt | date: 'short' }}</p>
+        </div>
+        <button class="btn btn-danger btn-sm" (click)="removeItem(item.productId)">Quitar</button>
+      </div>
+    </div>
+  </ng-container>
 </div>

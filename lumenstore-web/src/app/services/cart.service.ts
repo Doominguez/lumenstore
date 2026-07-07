@@ -1,7 +1,7 @@
-import { Injectable, inject, OnDestroy } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Observable, BehaviorSubject, Subject } from 'rxjs';
-import { takeUntil, tap } from 'rxjs/operators';
+import { Observable, BehaviorSubject } from 'rxjs';
+import { tap } from 'rxjs/operators';
 import { ApiService } from './api.service';
 import { AuthService } from './auth.service';
 import { Carrito, CarritoItem, CarritoItemRequestDTO } from '../models';
@@ -9,22 +9,20 @@ import { Carrito, CarritoItem, CarritoItemRequestDTO } from '../models';
 @Injectable({
   providedIn: 'root',
 })
-export class CartService extends ApiService implements OnDestroy {
+export class CartService extends ApiService {
   private cartSubject = new BehaviorSubject<Carrito | null>(null);
-  public cart$ = this.cartSubject.asObservable();
-
-  private destroy$ = new Subject<void>();
+  readonly cart$ = this.cartSubject.asObservable();
 
   private cartCountSubject = new BehaviorSubject<number>(0);
-  public cartCount$ = this.cartCountSubject.asObservable();
+  readonly cartCount$ = this.cartCountSubject.asObservable();
 
   private authService = inject(AuthService);
 
   constructor(http: HttpClient) {
     super(http);
 
-    // Subscribe to auth changes to reload cart when user logs in
-    this.authService.currentUser$.pipe(takeUntil(this.destroy$)).subscribe((user) => {
+    // Reload cart when user logs in
+    this.authService.currentUser$.subscribe((user) => {
       if (user) {
         this.loadCart();
       } else {
@@ -34,22 +32,11 @@ export class CartService extends ApiService implements OnDestroy {
     });
   }
 
-  ngOnDestroy(): void {
-    this.destroy$.next();
-    this.destroy$.complete();
-  }
-
   loadCart(): void {
     const clientId = this.getClientId();
     if (clientId) {
       this.getCart(clientId).subscribe({
-        next: (cart) => {
-          this.cartSubject.next(cart);
-          this.updateCartCount(cart);
-        },
-        error: (error) => {
-          console.error('Error loading cart:', error);
-        },
+        error: () => console.error('Error loading cart'),
       });
     }
   }
@@ -107,10 +94,8 @@ export class CartService extends ApiService implements OnDestroy {
 
   getCartTotal(): number {
     const cart = this.cartSubject.value;
-    if (!cart) return 0;
-    return cart.items.reduce((total, item) => {
-      return total + item.quantity * (item.price || 0);
-    }, 0);
+    if (!cart?.items) return 0;
+    return cart.items.reduce((total, item) => total + item.quantity * (item.price || 0), 0);
   }
 
   getItemCount(): number {
@@ -123,10 +108,6 @@ export class CartService extends ApiService implements OnDestroy {
   }
 
   private getClientId(): number | null {
-    const user = localStorage.getItem('currentUser');
-    if (user) {
-      return JSON.parse(user).id;
-    }
-    return null;
+    return this.authService.getCurrentUser()?.id ?? null;
   }
 }

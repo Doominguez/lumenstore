@@ -3,6 +3,8 @@ package com.lumenstore.controller;
 import com.lumenstore.dto.ErrorResponseDTO;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.ConstraintViolationException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
@@ -15,14 +17,17 @@ import org.springframework.web.context.request.WebRequest;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler;
 
 import java.util.List;
-import java.util.stream.Collectors;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 
+    private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
+
     @ExceptionHandler(RuntimeException.class)
     public ResponseEntity<ErrorResponseDTO> handleRuntimeException(RuntimeException ex) {
-        ErrorResponseDTO response = new ErrorResponseDTO(ex.getMessage(), null);
+        log.error("Unexpected error: {}", ex.getMessage(), ex);
+        ErrorResponseDTO response = new ErrorResponseDTO(
+                "Ha ocurrido un error inesperado. Intente nuevamente.", null);
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
     }
 
@@ -37,9 +42,9 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
                 .map(fieldError -> new ErrorResponseDTO.FieldErrorDTO(
                         fieldError.getField(),
                         fieldError.getDefaultMessage()))
-                .collect(Collectors.toList());
+                .toList();
 
-        ErrorResponseDTO response = new ErrorResponseDTO("Validation failed", fieldErrors);
+        ErrorResponseDTO response = new ErrorResponseDTO("Error de validación", fieldErrors);
         return ResponseEntity.badRequest().body(response);
     }
 
@@ -47,9 +52,9 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     public ResponseEntity<ErrorResponseDTO> handleConstraintViolation(ConstraintViolationException ex) {
         List<ErrorResponseDTO.FieldErrorDTO> fieldErrors = ex.getConstraintViolations().stream()
                 .map(this::mapViolation)
-                .collect(Collectors.toList());
+                .toList();
 
-        ErrorResponseDTO response = new ErrorResponseDTO("Validation failed", fieldErrors);
+        ErrorResponseDTO response = new ErrorResponseDTO("Error de validación", fieldErrors);
         return ResponseEntity.badRequest().body(response);
     }
 

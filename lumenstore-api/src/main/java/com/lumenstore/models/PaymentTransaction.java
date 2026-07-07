@@ -1,7 +1,6 @@
 package com.lumenstore.models;
 
 import jakarta.persistence.*;
-import com.fasterxml.jackson.databind.JsonNode;
 import lombok.*;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
